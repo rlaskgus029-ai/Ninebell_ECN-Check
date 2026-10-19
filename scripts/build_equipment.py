@@ -26,7 +26,7 @@ def parse_full(s):
 
 
 def parse_md(s, po):
-    """6/25 처럼 연도 없는 날짜 → PO 연도 기준. E-BOM 월이 PO 월보다 앞서면 다음 해."""
+    """6/25 처럼 연도 없는 날짜 → PO DATE와 가장 가까운 연도로 붙임."""
     s = (s or "").strip()
     full = parse_full(s)
     if full:
@@ -35,11 +35,13 @@ def parse_md(s, po):
     if not m or not po:
         return None
     mo, d = map(int, m.groups())
-    y = po.year + (1 if mo < po.month else 0)
-    try:
-        return datetime.date(y, mo, d)
-    except ValueError:
-        return None
+    cands = []
+    for y in (po.year - 1, po.year, po.year + 1):
+        try:
+            cands.append(datetime.date(y, mo, d))
+        except ValueError:
+            pass
+    return min(cands, key=lambda x: abs((x - po).days)) if cands else None
 
 
 def iso(d):
