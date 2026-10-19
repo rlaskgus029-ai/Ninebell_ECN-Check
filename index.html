@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<meta name="theme-color" content="#f6f8fa">
+<title>ECN 적용 확인</title>
+<style>
+:root{--bg:#f6f8fa;--card:#fff;--line:#d0d7de;--text:#1f2328;--muted:#59636e;--brand:#0b3d91;
+--ok:#1a7f37;--ok-bg:#dafbe1;--warn:#9a6700;--warn-bg:#fff8c5;--no:#59636e;--no-bg:#eef1f4;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line)}
+.wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+.top{display:flex;align-items:center;gap:12px;height:56px}
+.logo{font-weight:800;letter-spacing:.08em;color:var(--brand);font-size:18px}
+.top h1{font-size:16px;margin:0;font-weight:600}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tabs button{border:1px solid transparent;background:none;padding:6px 12px;border-radius:6px;font:inherit;cursor:pointer;color:var(--muted)}
+.tabs button.on{background:var(--bg);border-color:var(--line);color:var(--text);font-weight:600}
+main.wrap{padding-top:20px;padding-bottom:40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+.search{display:flex;gap:8px;flex-wrap:wrap}
+.search input{flex:1;min-width:200px;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font:inherit}
+.search button{padding:10px 18px;border:0;border-radius:6px;background:var(--brand);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.hint{color:var(--muted);font-size:13px;margin-top:8px}
+.matches{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.matches button{border:1px solid var(--line);background:#fff;border-radius:16px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 16px}
+.info div span{display:block;color:var(--muted);font-size:12px}
+.info div b{font-weight:600}
+.summary{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px}
+.pill{border-radius:16px;padding:4px 12px;font-size:13px;font-weight:600}
+.s-apply{background:var(--ok-bg);color:var(--ok)}
+.s-check{background:var(--warn-bg);color:var(--warn)}
+.s-no{background:var(--no-bg);color:var(--no)}
+h2{font-size:15px;margin:18px 0 8px}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+.tbl th{font-size:12px;color:var(--muted);font-weight:600;background:#fafbfc}
+.tbl td.ecn{white-space:nowrap;font-weight:600}
+.why{color:var(--muted);font-size:13px}
+.k{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:0 5px;margin-right:4px;background:#eaeef2;color:var(--muted)}
+details summary{cursor:pointer;color:var(--muted);margin:14px 0 6px}
+.foot{color:var(--muted);font-size:12px;margin-top:8px}
+.empty{color:var(--muted);padding:20px 0;text-align:center}
+@media (max-width:640px){
+ .tbl thead{display:none}.tbl tr{display:block;border-bottom:1px solid var(--line);padding:8px 0}
+ .tbl td{display:block;border:0;padding:2px 0}
+ .top h1{display:none}
+}
+</style>
+</head>
+<body>
+<header><div class="wrap top">
+ <span class="logo">NINEBELL</span><h1>ECN 적용 확인</h1>
+ <nav class="tabs"><button data-tab="find" class="on">장비 조회</button><button data-tab="list">ECN 목록</button></nav>
+</div></header>
+<main class="wrap">
+ <section id="tab-find">
+  <div class="card">
+   <form class="search" id="f"><input id="q" list="projects" placeholder="PROJECT NO. 입력 (예: ECP337, HH91-265)" autocomplete="off"><datalist id="projects"></datalist><button>조회</button></form>
+   <div class="hint" id="hint">불러오는 중…</div>
+   <div class="matches" id="matches"></div>
+  </div>
+  <div id="result"></div>
+ </section>
+ <section id="tab-list" hidden>
+  <div class="card">
+   <div class="search"><input id="lq" placeholder="ECN 번호, 제목, 적용 장비 타입으로 검색"></div>
+   <table class="tbl" style="margin-top:12px"><thead><tr><th>No</th><th>ECN</th><th>제목</th><th>적용 장비 타입</th><th>적용 범위</th><th>판정 기준</th><th>비고</th></tr></thead><tbody id="ltb"></tbody></table>
+  </div>
+ </section>
+ <p class="foot" id="foot"></p>
+</main>
+<script>
+const ECN_DIR='Z:\\생산업무\\Ninebell Document\\1. 사내 문서\\4. 변경점 관리\\2026년\\2. ECN\\3. 최종본';
+let ECNS=[],EQ=[];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=d=>d?d.replaceAll('-','.'):'-';
+const BASIS={mech:'기구 E-BOM',elec:'전장 E-BOM',po:'PO DATE',ship:'출하일(Factory Out)',approval:'승인일',check:'확인 필요',type_only:'타입만 맞으면 적용 (제어)',specific:'지정 장비',exclude:'제외 (IMP)'};
+const EQFIELD={mech:'mech',elec:'elec',po:'po',ship:'out',approval:'po'};
+const norm=s=>String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
+
+function scopeText(s){return [s.new&&'신규',s.prev&&'기발주',s.ship&&'기출하'].filter(Boolean).join(' · ')||'-'}
+
+function evaluate(e,r){
+ if(r.basis==='exclude')return null;
+ const P=norm(e.p);
+ const named=(r.projects||[]).some(x=>P===norm(x)||P.startsWith(norm(x)+' '));
+ if(named)return {s:'apply',why:'ECN에 지정된 장비'};
+ const m=r.match||{};
+ let hit=false,vac=false;
+ if(m.all)hit=true;
+ if(m.type&&m.type.some(re=>new RegExp(re,'i').test(e.t)))hit=true;
+ if(m.pn&&m.pn.some(p=>e.pn.includes(p)))hit=true;
+ if(m.vacuum){hit=true;vac=true}
+ if(!hit)return null;
+ let res=decide(e,r);
+ const cautions=[];
+ if(vac)cautions.push('Vacuum Type 여부는 SCS/RCS 확인 필요');
+ if(r.spec)cautions.push(r.spec+' (PJT 확인 필요)');
+ if(cautions.length&&res.s==='apply')res={s:'check',why:res.why+' → '+cautions.join(' / ')};
+ else if(cautions.length&&res.s==='check')res.why+=' / '+cautions.join(' / ');
+ return res;
+}
+function decide(e,r){
+ if(r.basis==='check')return {s:'check',why:r.note||'적용일자 미기재 (After Approval)'};
+ if(r.basis==='type_only')return {s:'apply',why:'제어 ECN: 적용 장비 타입 해당'};
+ if(r.basis==='specific')return {s:'check',why:'지정 장비 아님'};
+ if(r.scope.ship)return {s:'apply',why:'적용 범위에 기출하장비 포함 → 날짜와 무관하게 적용'};
+ let date=r.date;
+ if(r.dateByType){const hit=r.dateByType.find(([re])=>new RegExp(re,'i').test(e.t));if(!hit)return {s:'check',why:'ECN 타입별 적용일 표에 없는 타입'};date=hit[1]}
+ const f=EQFIELD[r.basis],ed=e[f];
+ const label=BASIS[r.basis];
+ if(!ed)return {s:'check',why:`장비의 ${label} 날짜가 Backlog에 없음`};
+ if(ed>=date)return {s:'apply',why:`${label} ${fmt(ed)} ≥ 적용일 ${fmt(date)}`};
+ if(r.scope.prev&&!e.shipped)return {s:'apply',why:`${label} ${fmt(ed)} < 적용일 ${fmt(date)}, 기발주분(미출하) 포함`};
+ return {s:'no',why:`${label} ${fmt(ed)} < 적용일 ${fmt(date)}`+(r.scope.prev?' (이미 출하됨)':'')};
+}
+
+function row(r,res){
+ const extra=[r.note&&r.basis!=='check'?r.note:'',r.firstApplied?'최초 적용: '+r.firstApplied:''].filter(Boolean).join(' · ');
+ return `<tr><td class="ecn"><span class="k">${esc(r.kind)}</span>${esc(r.ecn)}</td><td>${esc(r.title)}<div class="why">${esc(r.typeText)}</div></td><td>${esc(scopeText(r.scope))}</td><td>${esc(res.why)}${extra?`<div class="why">${esc(extra)}</div>`:''}</td></tr>`;
+}
+function table(list){return `<table class="tbl"><thead><tr><th>ECN</th><th>제목 / 적용 장비 타입</th><th>적용 범위</th><th>판정 근거</th></tr></thead><tbody>${list.map(([r,res])=>row(r,res)).join('')}</tbody></table>`}
+
+function show(e){
+ const out={apply:[],check:[],no:[]};
+ ECNS.forEach(r=>{const res=evaluate(e,r);if(res)out[res.s].push([r,res])});
+ $('#result').innerHTML=`<div class="card">
+  <div class="info">
+   <div><span>PROJECT NO.</span><b>${esc(e.p)}</b></div><div><span>TYPE</span><b>${esc(e.t)||'-'}</b></div>
+   <div><span>PO DATE</span><b>${fmt(e.po)}</b></div><div><span>기구 E-BOM</span><b>${fmt(e.mech)}</b></div><div><span>전장 E-BOM</span><b>${fmt(e.elec)}</b></div>
+   <div><span>Factory Out</span><b>${fmt(e.out)} ${e.shipped?'(출하 완료)':'(미출하)'}</b></div>
+  </div></div>
+  <div class="card">
+  <div class="summary"><span class="pill s-apply">적용 ${out.apply.length}</span><span class="pill s-check">확인 필요 ${out.check.length}</span><span class="pill s-no">미적용 ${out.no.length}</span></div>
+  <h2>적용 대상 ECN</h2>${out.apply.length?table(out.apply):'<div class="empty">없음</div>'}
+  <h2>확인 필요</h2>${out.check.length?table(out.check):'<div class="empty">없음</div>'}
+  <details><summary>타입은 맞지만 적용일 이전이라 미적용 (${out.no.length})</summary>${out.no.length?table(out.no):''}</details>
+  <p class="foot">ECN 원본: ${esc(ECN_DIR)}</p></div>`;
+}
+
+function find(q){
+ const Q=norm(q);$('#matches').innerHTML='';
+ if(!Q){$('#result').innerHTML='';return}
+ const exact=EQ.filter(e=>norm(e.p)===Q);
+ const part=exact.length?exact:EQ.filter(e=>norm(e.p).includes(Q));
+ if(part.length===1)return show(part[0]);
+ $('#result').innerHTML=part.length?'':'<div class="card empty">Backlog에서 찾을 수 없어요. PROJECT NO.를 다시 확인해 주세요.</div>';
+ if(part.length>1){
+  $('#matches').innerHTML=part.slice(0,40).map((e,i)=>`<button data-i="${EQ.indexOf(e)}">${esc(e.p)} <span class="why">${esc(e.t)}</span></button>`).join('')+(part.length>40?`<span class="why">외 ${part.length-40}건</span>`:'');
+ }
+}
+
+function renderList(q){
+ const Q=norm(q);
+ $('#ltb').innerHTML=ECNS.filter(r=>!Q||norm(r.ecn+' '+r.title+' '+r.typeText+' '+r.no).includes(Q)).map(r=>{
+  const d=r.dateByType?r.dateByType.map(x=>fmt(x[1])).join(', '):fmt(r.date);
+  const basis=BASIS[r.basis]+(['mech','elec','po','ship','approval'].includes(r.basis)?' '+d:'');
+  return `<tr><td>${esc(r.no)}</td><td class="ecn"><span class="k">${esc(r.kind)}</span>${esc(r.ecn)}</td><td>${esc(r.title)}</td><td>${esc(r.typeText)}</td><td>${esc(scopeText(r.scope))}</td><td>${esc(basis)}</td><td class="why">${esc([r.note,r.spec].filter(Boolean).join(' / '))}</td></tr>`}).join('');
+}
+
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+ $('#tab-find').hidden=b.dataset.tab!=='find';$('#tab-list').hidden=b.dataset.tab!=='list';
+});
+$('#f').onsubmit=ev=>{ev.preventDefault();find($('#q').value)};
+$('#matches').onclick=ev=>{const b=ev.target.closest('button');if(b){const e=EQ[+b.dataset.i];$('#q').value=e.p;$('#matches').innerHTML='';show(e)}};
+$('#lq').oninput=ev=>renderList(ev.target.value);
+
+const J=u=>fetch(u,{cache:'no-store'}).then(r=>r.json());
+const D=s=>s?`20${s.slice(0,2)}-${s.slice(2,4)}-${s.slice(4,6)}`:'';
+Promise.all([J('data/ecn_rules.json'),J('data/eq1.json'),J('data/eq2.json'),J('data/eq3.json'),J('data/eq4.json')]).then(([a,...parts])=>{
+ const b=parts[0];
+ ECNS=a.ecns;EQ=parts.flatMap(x=>x.equipment).map(r=>({p:r[0],t:r[1],pn:r[2],po:D(r[3]),mech:D(r[4]),elec:D(r[5]),out:D(r[6]),shipped:!!r[7]}));
+ $('#projects').innerHTML=EQ.map(e=>`<option value="${esc(e.p)}">`).join('');
+ $('#hint').textContent=`장비 ${EQ.length}대 · ECN ${ECNS.filter(r=>r.basis!=='exclude').length}건 (IMP 제외)`;
+ $('#foot').textContent=`Backlog 갱신 ${b.updated} · ECN 규칙 갱신 ${a.updated}`;
+ renderList('');
+ const p=new URLSearchParams(location.search).get('p');if(p){$('#q').value=p;find(p)}
+}).catch(()=>{$('#hint').textContent='데이터를 불러오지 못했어요.'});
+</script>
+</body>
+</html>
