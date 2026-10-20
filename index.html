@@ -45,6 +45,8 @@ h2{font-size:15px;margin:18px 0 8px}
 details summary{cursor:pointer;color:var(--muted);margin:14px 0 6px}
 .foot{color:var(--muted);font-size:12px;margin-top:8px}
 .empty{color:var(--muted);padding:20px 0;text-align:center}
+.pdf{display:inline-block;white-space:nowrap;border:1px solid var(--line);border-radius:6px;padding:3px 10px;font-size:13px;font-weight:600;color:var(--brand);text-decoration:none;background:#fff}
+.pdf:hover{background:var(--bg)}
 @media (max-width:640px){
  .tbl thead{display:none}.tbl tr{display:block;border-bottom:1px solid var(--line);padding:8px 0}
  .tbl td{display:block;border:0;padding:2px 0}
@@ -69,7 +71,7 @@ details summary{cursor:pointer;color:var(--muted);margin:14px 0 6px}
  <section id="tab-list" hidden>
   <div class="card">
    <div class="search"><input id="lq" placeholder="ECN 번호, 제목, 적용 장비 타입으로 검색"></div>
-   <table class="tbl" style="margin-top:12px"><thead><tr><th>No</th><th>ECN</th><th>제목</th><th>적용 장비 타입</th><th>적용 범위</th><th>판정 기준</th><th>비고</th></tr></thead><tbody id="ltb"></tbody></table>
+   <table class="tbl" style="margin-top:12px"><thead><tr><th>No</th><th>ECN</th><th>제목</th><th>적용 장비 타입</th><th>적용 범위</th><th>판정 기준</th><th>비고</th><th>원본</th></tr></thead><tbody id="ltb"></tbody></table>
   </div>
  </section>
  <p class="foot" id="foot"></p>
@@ -79,6 +81,7 @@ const ECN_DIR='Z:\\생산업무\\Ninebell Document\\1. 사내 문서\\4. 변경�
 let ECNS=[],EQ=[];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pdfLink=r=>`<a class="pdf" href="pdf/${encodeURIComponent(r.ecn)}.pdf" target="_blank" rel="noopener">PDF</a>`;
 const fmt=d=>d?d.replaceAll('-','.'):'-';
 const BASIS={mech:'기구 E-BOM',elec:'전장 E-BOM',po:'PO DATE',ship:'출하일(Factory Out)',approval:'승인일',check:'확인 필요',type_only:'타입만 맞으면 적용 (제어)',specific:'지정 장비',exclude:'제외 (IMP)'};
 const EQFIELD={mech:'mech',elec:'elec',po:'po',ship:'out',approval:'po'};
@@ -123,9 +126,9 @@ function decide(e,r){
 
 function row(r,res){
  const extra=[r.note&&r.basis!=='check'?r.note:'',r.firstApplied?'최초 적용: '+r.firstApplied:''].filter(Boolean).join(' · ');
- return `<tr><td class="ecn"><span class="k">${esc(r.kind)}</span>${esc(r.ecn)}</td><td>${esc(r.title)}<div class="why">${esc(r.typeText)}</div></td><td>${esc(scopeText(r.scope))}</td><td>${esc(res.why)}${extra?`<div class="why">${esc(extra)}</div>`:''}</td></tr>`;
+ return `<tr><td class="ecn"><span class="k">${esc(r.kind)}</span>${esc(r.ecn)}</td><td>${esc(r.title)}<div class="why">${esc(r.typeText)}</div></td><td>${esc(scopeText(r.scope))}</td><td>${esc(res.why)}${extra?`<div class="why">${esc(extra)}</div>`:''}</td><td>${pdfLink(r)}</td></tr>`;
 }
-function table(list){return `<table class="tbl"><thead><tr><th>ECN</th><th>제목 / 적용 장비 타입</th><th>적용 범위</th><th>판정 근거</th></tr></thead><tbody>${list.map(([r,res])=>row(r,res)).join('')}</tbody></table>`}
+function table(list){return `<table class="tbl"><thead><tr><th>ECN</th><th>제목 / 적용 장비 타입</th><th>적용 범위</th><th>판정 근거</th><th>원본</th></tr></thead><tbody>${list.map(([r,res])=>row(r,res)).join('')}</tbody></table>`}
 
 function show(e){
  const out={apply:[],check:[],no:[]};
@@ -161,7 +164,7 @@ function renderList(q){
  $('#ltb').innerHTML=ECNS.filter(r=>!Q||norm(r.ecn+' '+r.title+' '+r.typeText+' '+r.no).includes(Q)).map(r=>{
   const d=r.dateByType?r.dateByType.map(x=>fmt(x[1])).join(', '):fmt(r.date);
   const basis=BASIS[r.basis]+(['mech','elec','po','ship','approval'].includes(r.basis)?' '+d:'');
-  return `<tr><td>${esc(r.no)}</td><td class="ecn"><span class="k">${esc(r.kind)}</span>${esc(r.ecn)}</td><td>${esc(r.title)}</td><td>${esc(r.typeText)}</td><td>${esc(scopeText(r.scope))}</td><td>${esc(basis)}</td><td class="why">${esc([r.note,r.spec].filter(Boolean).join(' / '))}</td></tr>`}).join('');
+  return `<tr><td>${esc(r.no)}</td><td class="ecn"><span class="k">${esc(r.kind)}</span>${esc(r.ecn)}</td><td>${esc(r.title)}</td><td>${esc(r.typeText)}</td><td>${esc(scopeText(r.scope))}</td><td>${esc(basis)}</td><td class="why">${esc([r.note,r.spec].filter(Boolean).join(' / '))}</td><td>${pdfLink(r)}</td></tr>`}).join('');
 }
 
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
