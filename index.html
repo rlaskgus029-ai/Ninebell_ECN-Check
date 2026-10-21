@@ -31,7 +31,11 @@ main.wrap{padding-top:20px;padding-bottom:40px}
 .info div span{display:block;color:var(--muted);font-size:12px}
 .info div b{font-weight:600}
 .summary{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 12px}
-.pill{border-radius:16px;padding:4px 12px;font-size:13px;font-weight:600}
+.pill{border-radius:16px;padding:4px 12px;font-size:13px;font-weight:600;border:2px solid transparent;cursor:pointer;font-family:inherit}
+.pill:hover{filter:brightness(.96)}
+.pill.on{border-color:currentColor}
+.s-all{background:#fff;color:var(--text);border-color:var(--line)}
+.s-all.on{border-color:var(--text)}
 .s-apply{background:var(--ok-bg);color:var(--ok)}
 .s-check{background:var(--warn-bg);color:var(--warn)}
 .s-no{background:var(--no-bg);color:var(--no)}
@@ -140,10 +144,10 @@ function show(e){
    <div><span>Factory Out</span><b>${fmt(e.out)} ${e.shipped?'(출하 완료)':'(미출하)'}</b></div>
   </div></div>
   <div class="card">
-  <div class="summary"><span class="pill s-apply">적용 ${out.apply.length}</span><span class="pill s-check">확인 필요 ${out.check.length}</span><span class="pill s-no">미적용 ${out.no.length}</span></div>
-  <h2>적용 대상 ECN</h2>${out.apply.length?table(out.apply):'<div class="empty">없음</div>'}
-  <h2>확인 필요</h2>${out.check.length?table(out.check):'<div class="empty">없음</div>'}
-  <details><summary>타입은 맞지만 적용일 이전이라 미적용 (${out.no.length})</summary>${out.no.length?table(out.no):''}</details>
+  <div class="summary" id="filter"><button class="pill s-all on" data-f="all">전체 ${out.apply.length+out.check.length+out.no.length}</button><button class="pill s-apply" data-f="apply">적용 ${out.apply.length}</button><button class="pill s-check" data-f="check">확인 필요 ${out.check.length}</button><button class="pill s-no" data-f="no">미적용 ${out.no.length}</button></div>
+  <section data-s="apply"><h2>적용 대상 ECN</h2>${out.apply.length?table(out.apply):'<div class="empty">없음</div>'}</section>
+  <section data-s="check"><h2>확인 필요</h2>${out.check.length?table(out.check):'<div class="empty">없음</div>'}</section>
+  <section data-s="no"><details id="nodet"><summary>타입은 맞지만 적용일 이전이라 미적용 (${out.no.length})</summary>${out.no.length?table(out.no):'<div class="empty">없음</div>'}</details></section>
   <p class="foot">ECN 원본: ${esc(ECN_DIR)}</p></div>`;
 }
 
@@ -174,6 +178,10 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
 $('#f').onsubmit=ev=>{ev.preventDefault();find($('#q').value)};
 $('#matches').onclick=ev=>{const b=ev.target.closest('button');if(b){const e=EQ[+b.dataset.i];$('#q').value=e.p;$('#matches').innerHTML='';show(e)}};
 $('#lq').oninput=ev=>renderList(ev.target.value);
+$('#result').onclick=ev=>{const b=ev.target.closest('#filter .pill');if(!b)return;const f=b.dataset.f;
+ document.querySelectorAll('#filter .pill').forEach(x=>x.classList.toggle('on',x===b));
+ document.querySelectorAll('#result section[data-s]').forEach(s=>s.hidden=!(f==='all'||s.dataset.s===f));
+ const d=$('#nodet');if(d)d.open=f==='no';};
 
 const J=u=>fetch(u,{cache:'no-store'}).then(r=>r.json());
 const D=s=>s?`20${s.slice(0,2)}-${s.slice(2,4)}-${s.slice(4,6)}`:'';
