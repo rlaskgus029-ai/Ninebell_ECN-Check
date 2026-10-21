@@ -3,11 +3,12 @@
 사용법: python build_equipment.py backlog.csv ../data/ecn_rules.json ../data/
 결과: data/eq1.json ~ eq4.json (GitHub 업로드 크기를 줄이려고 4개로 나눔)
 열 위치(시트1): H PROJECT NO. / I TYPE / J EFEM P/N / K Process P/N / M PO DATE /
-Q 기구 E-BOM / S 전장 E-BOM / BP Factory Out Date / BQ 출하 완료(TRUE)
+Q 기구 E-BOM / S 전장 E-BOM / BJ QC 검수 / BK QC 완료(TRUE) /
+BP Factory Out Date / BQ 출하 완료(TRUE)
 """
 import csv, json, re, sys, datetime
 
-COL = dict(project=7, type=8, efem=9, proc=10, po=12, mech=16, elec=18, out=67, shipped=68, dev=73)
+COL = dict(project=7, type=8, efem=9, proc=10, po=12, mech=16, elec=18, out=67, shipped=68, qc=61, qcdone=62, dev=73)
 
 
 def parse_full(s):
@@ -70,8 +71,10 @@ def main(src, rules, outdir, parts=4):
             iso(parse_md(r[COL["elec"]], po)) or "",
             iso(parse_full(r[COL["out"]])) or "",
             1 if r[COL["shipped"]].strip().upper() == "TRUE" else 0,
+            iso(parse_md(r[COL["qc"]], po)) or "",
+            1 if r[COL["qcdone"]].strip().upper() == "TRUE" else 0,
         ])
-    # 각 행: [PROJECT NO., TYPE, ECN 대상 P/N, PO DATE, 기구 E-BOM, 전장 E-BOM, Factory Out, 출하완료(1/0)]  날짜는 YYMMDD
+    # 각 행: [PROJECT NO., TYPE, ECN 대상 P/N, PO DATE, 기구 E-BOM, 전장 E-BOM, Factory Out, 출하완료(1/0), QC 검수, QC 완료(1/0)]  날짜는 YYMMDD
     n = (len(out) + parts - 1) // parts
     for i in range(parts):
         json.dump(dict(updated=datetime.date.today().isoformat(), equipment=out[i*n:(i+1)*n]),
